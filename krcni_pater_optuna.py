@@ -127,39 +127,39 @@ if avg_rf_mse < avg_nn_mse:
 else:
     print("Neuronka (pos0) je přesnější podle MSE.")
 
-# Předpoklad: train_test_split je stejný jako dříve (s random_state=42)
+# Výsledky pro více random splitů
+os.makedirs("data/predikce_optuna", exist_ok=True)
 
-# Rozdělení dat pro testovací indexy
-_, test_idx = train_test_split(np.arange(len(df)), test_size=0.2, random_state=42)
+for rs in range(10):
+    print(f"\n=== Generuji predikce pro random_state={rs} ===")
 
-vysledky_df = pd.DataFrame(index=test_idx)
+    _, test_idx = train_test_split(np.arange(len(df)), test_size=0.2, random_state=rs)
+    vysledky_df = pd.DataFrame(index=test_idx)
 
-for kp in range(23):
-    prefix = f"kp{kp}"
-    feature_names = feature_names_per_kp[kp]
-    model = regressors[prefix]
+    for kp in range(23):
+        prefix = f"kp{kp}"
+        feature_names = feature_names_per_kp[kp]
+        model = regressors[prefix]
 
-    # Data
-    X = df[feature_names].iloc[test_idx]
-    y_true = df[[f"target_{prefix}_x", f"target_{prefix}_y"]].iloc[test_idx]
+        # Data
+        X = df[feature_names].iloc[test_idx]
+        y_true = df[[f"target_{prefix}_x", f"target_{prefix}_y"]].iloc[test_idx]
 
-    # Predikce regrese
-    y_pred_rf = model.predict(X)
+        # Predikce regrese
+        y_pred_rf = model.predict(X)
 
-    # Predikce založená na pozici s nejvyšší vahou (pos0)
-    y_pred_nn = df[[f"pred_{prefix}_pos0_x", f"pred_{prefix}_pos0_y"]].iloc[test_idx].values
+        # Predikce založená na pozici s největší vahou (pos0)
+        y_pred_nn = df[[f"pred_{prefix}_pos0_x", f"pred_{prefix}_pos0_y"]].iloc[test_idx].values
 
-    # Uložení do výsledného DataFrame
-    vysledky_df[f"skutecna_{prefix}_x"] = y_true[f"target_{prefix}_x"]
-    vysledky_df[f"skutecna_{prefix}_y"] = y_true[f"target_{prefix}_y"]
-    vysledky_df[f"nejvetsi_vaha_{prefix}_x"] = y_pred_nn[:, 0]
-    vysledky_df[f"nejvetsi_vaha_{prefix}_y"] = y_pred_nn[:, 1]
-    vysledky_df[f"predikce_{prefix}_x"] = y_pred_rf[:, 0]
-    vysledky_df[f"predikce_{prefix}_y"] = y_pred_rf[:, 1]
+        # Uložení do výsledného DataFrame
+        vysledky_df[f"skutecna_{prefix}_x"] = y_true[f"target_{prefix}_x"]
+        vysledky_df[f"skutecna_{prefix}_y"] = y_true[f"target_{prefix}_y"]
+        vysledky_df[f"nejvetsi_vaha_{prefix}_x"] = y_pred_nn[:, 0]
+        vysledky_df[f"nejvetsi_vaha_{prefix}_y"] = y_pred_nn[:, 1]
+        vysledky_df[f"predikce_{prefix}_x"] = y_pred_rf[:, 0]
+        vysledky_df[f"predikce_{prefix}_y"] = y_pred_rf[:, 1]
 
-# Uložení do CSV
-output_path = "data/predikce_bodu_optuna.csv"
-import os
-os.makedirs(os.path.dirname(output_path), exist_ok=True)
-vysledky_df.to_csv(output_path, index=False)
-print(f"Predikce uloženy do {output_path}")
+    # Uložení CSV pro daný random state
+    output_path = f"data/predikce_optuna/predikce_rs{rs}.csv"
+    vysledky_df.to_csv(output_path, index=False)
+    print(f"Uloženo do {output_path}")
